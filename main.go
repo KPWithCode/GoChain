@@ -28,6 +28,10 @@ type Block struct {
 
 var GoBlock []Block
 
+type Message struct {
+	Data int
+}
+
 var mutex = &sync.Mutex{}
 
 func main() {
@@ -74,28 +78,66 @@ func makeRouter() http.Handler {
 }
 
 func handleGetBlockchain(w http.ResponseWriter, r *http.Request) {
-	bytes, err := json.MarshalIndent(GoBlock,""," ")
+	bytes, err := json.MarshalIndent(GoBlock, "", " ")
 	if err != nil {
-		http.Error(w, err.Error(),http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	io.WriteString(w, string(bytes))
 }
 
-func handleWriteBlock() {
+func handleWriteBlock(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	var m Message
+
+	decoder := json.NewDecoder(r.Body)
+	if err := decoder.Decode(&m); err != nil {
+		respondwithJson(w, r, http.StatusBadRequest, r.Body)
+		return
+	}
+	defer r.Body.Close()
+
+	mutex.Lock()
+	// sent old block and data
+	newBlock := generateBlock(GoBlock[len(GoBlock) -1], m.Data)
+	mutex.Unlock()
+	// after block created check if block is valid
+	if isBlockValid(newBlock, GoBlock[len(GoBlock) -1]) {
+		GoBlock = append(GoBlock, newBlock)
+		spew.Dump(GoBlock)
+	}
+	// json that shows new block created
+	respondwithJson(w, r, http.StatusCreated, newBlock)
+}
+
+func respondwithJson(w http.ResponseWriter, r *http.Request, code int, payload interface{}) {
+	w.Header().Set("Content-Type", "application/json")
+	response, err := json.MarshalIndent(payload, "", " ")
+
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("HTTP 500: Internal Server Error"))
+		return
+	}
+	w.WriteHeader(code)
+	w.Write(response)
+}
+
+func generateBlock(oldBlock Block, Data int) Block {
 
 }
 
-func respondwithJson() {
-
-}
-
-func generateBlock() {
-
-}
-
-func isBlockValid() bool {
-
+func isBlockValid(newBlock Block, oldBlock Block) bool {
+	if oldBlock.Index+1 != newBlock.Index {
+		return false
+	}
+	if oldBlock.prevHash != newBlock.prevHash {
+		return false
+	}
+	if calculateHash(newBlock) != newBlock.Hash {
+		return false
+	}
+	return false
 }
 
 func calculateHash() string {

@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -124,7 +125,31 @@ func respondwithJson(w http.ResponseWriter, r *http.Request, code int, payload i
 }
 
 func generateBlock(oldBlock Block, Data int) Block {
+	var newBlock Block
+	t := time.Now()
 
+	newBlock.Index = oldBlock.Index + 1
+	newBlock.Timestamp = t.String()
+	newBlock.Data = Data
+	newBlock.prevHash = oldBlock.Hash
+	newBlock.Difficulty = difficulty
+
+	for i := 0; ; i++ {
+		hex := fmt.Sprintf("/%x", i)
+		newBlock.Nonce = hex
+
+		if !isHashValid(calculateHash(newBlock), newBlock.Difficulty) {
+			fmt.Println(calculateHash(newBlock), "You got more work to do!!")
+			time.Sleep(time.Second)
+			continue
+		} else {
+			fmt.Println(calculateHash(newBlock), "Hash work is complete")
+			newBlock.Hash = calculateHash(newBlock)
+			break
+		}
+	}
+	// new block has is update so return 
+	return newBlock
 }
 
 func isBlockValid(newBlock Block, oldBlock Block) bool {

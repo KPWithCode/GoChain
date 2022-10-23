@@ -1,12 +1,15 @@
 package main
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"sync"
 	"time"
 
@@ -165,8 +168,16 @@ func isBlockValid(newBlock Block, oldBlock Block) bool {
 	return false
 }
 
-func calculateHash() string {
+func calculateHash(block Block) string {
+	// data record
+	record := strconv.Itoa(block.Index) + block.Timestamp + strconv.Itoa(block.Data) + block.prevHash + block.Nonce
 
+	// hash it 
+	h := sha256.New()
+	h.Write([]byte(record))
+	hashed := h.Sum(nil)
+	
+	return hex.EncodeToString(hashed)
 }
 
 func isHashValid() bool {
